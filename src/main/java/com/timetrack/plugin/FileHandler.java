@@ -2,10 +2,10 @@ package com.timetrack.plugin;
 
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
+
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
 
 public class FileHandler {
@@ -16,10 +16,6 @@ public class FileHandler {
         this.file = file;
     }
 
-    /**
-     * Записывает временные метки в файл
-     * @param currentTime - миллисекунды записываемые сейчас
-     */
     public void TimeStamp(long currentTime) {
         try (BufferedWriter writer = new BufferedWriter(
                 new OutputStreamWriter(
@@ -53,19 +49,15 @@ public class FileHandler {
         }
     }
 
-    /**
-     * Читаем из файла построчно, переводим строку в объект класса DateHolder
-     * с помощью getDateHolder и добавляем каждый объект в лист dateHolders
-     * @return лист с объектами класса DateHolder
-     */
-    public ArrayList<DateHolder> getDateHoldersFromFile() {
-        ArrayList<DateHolder> dateHolders = new ArrayList<>();
+    public DateHolder getDateHolder() {
+        DateHolder dateHolder = new DateHolder();
+
         if (!file.exists()) {
             try {
-                this.file.createNewFile();
+                file.createNewFile();
             } catch (IOException ex) {
                 log.error("Unable to create project time tracking file, " +
-                        this.file.getAbsolutePath(), ex);
+                        file.getAbsolutePath(), ex);
             }
         } else {
             try (BufferedReader reader = new BufferedReader(
@@ -73,31 +65,26 @@ public class FileHandler {
                             new FileInputStream(file),
                             StandardCharsets.UTF_8))
             ) {
-                while (reader.ready()) {
-                    dateHolders.add(getDateHolder(reader.readLine()));
+                if (reader.ready()) {
+                    String lastLine = "";
+                    String currentLine;
+
+                    while ((currentLine = reader.readLine()) != null) {
+                        lastLine = currentLine;
+                    }
+
+                    int comma = lastLine.indexOf(44);
+                    if (comma > -1) {
+                        long timeLong = Long.parseLong(lastLine.substring(comma + 1));
+                        String dateString = lastLine.substring(1, comma - 1);
+                        dateHolder = new DateHolder(timeLong, dateString);
+                    }
                 }
             } catch (IOException var6) {
-                log.error("", var6);
+                log.error("Can't get Date from file", var6);
             }
         }
 
-        return dateHolders;
-    }
-
-    /**
-     * Парсим строку в объект класса DateHolder
-     * @param str - строка файла
-     * @return объект класса DateHolder
-     */
-    public DateHolder getDateHolder(String str) {
-        DateHolder dateHolder = new DateHolder();
-
-        int comma = str.indexOf(44);
-        if (comma > -1) {
-            long timeLong = Long.parseLong(str.substring(comma + 1));
-            String dateString = str.substring(1, comma - 1);
-            dateHolder = new DateHolder(timeLong, dateString);
-        }
         return dateHolder;
     }
 }
